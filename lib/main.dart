@@ -38,8 +38,10 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
       GlobalKey<MyCustomFormState>();
   final GlobalKey<MyCustomFormState> _myCustomFormKeyOut =
       GlobalKey<MyCustomFormState>();
+
   double totalAmountIn = 0.0;
   double totalAmountOut = 0.0;
+  double get _netTotal => totalAmountIn - totalAmountOut;
 
   void _updateTotalAmountIn() {
     if (_myCustomFormKeyIn.currentState != null) {
@@ -66,16 +68,36 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
       body: Center(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
-            // Calculate the width based on screen size
             double width = MediaQuery.of(context).size.width;
             double cardWidth = width > 600 ? width * 0.6 : width * 0.9;
-            cardWidth = cardWidth > 800 ? 800 : cardWidth; // Max width 800px
+            cardWidth = cardWidth > 600 ? 600 : cardWidth;
 
             return Container(
               width: cardWidth,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
+                  Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ListTile(
+                            title: Text('Money Net'),
+                            subtitle: Text(
+                              '${_netTotal > 0 ? '+' : ''}£${_netTotal.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                color:
+                                    _netTotal >= 0 ? Colors.green : Colors.red,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 10),
                   Card(
                     child: Padding(
                       padding: EdgeInsets.all(16.0),
@@ -219,6 +241,8 @@ class MyCustomFormState extends State<MyCustomForm> {
             ),
           );
         }).toList(),
+
+        if (_submittedData.isNotEmpty) Divider(),
 
         // Form fields
         Form(
