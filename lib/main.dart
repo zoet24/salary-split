@@ -62,9 +62,6 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Salary Split App'),
-      ),
       body: Center(
         child: LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
@@ -77,6 +74,17 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'November 2023',
+                      style: TextStyle(
+                        fontSize: 24.0, // Choose a size that fits your design
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                   Card(
                     child: Padding(
                       padding: EdgeInsets.all(16.0),
@@ -111,8 +119,12 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
                           ),
                           Divider(),
                           MyCustomForm(
-                              key: _myCustomFormKeyIn,
-                              onUpdate: _updateTotalAmountIn),
+                            key: _myCustomFormKeyIn,
+                            onUpdate: _updateTotalAmountIn,
+                            nameHintText: "Zoe",
+                            amountHintText: "650",
+                            dateHintText: "27",
+                          ),
                         ],
                       ),
                     ),
@@ -131,8 +143,12 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
                           ),
                           Divider(),
                           MyCustomForm(
-                              key: _myCustomFormKeyOut,
-                              onUpdate: _updateTotalAmountOut),
+                            key: _myCustomFormKeyOut,
+                            onUpdate: _updateTotalAmountOut,
+                            nameHintText: "Mortage",
+                            amountHintText: "550",
+                            dateHintText: "2",
+                          ),
                         ],
                       ),
                     ),
@@ -149,7 +165,17 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
 
 class MyCustomForm extends StatefulWidget {
   final Function onUpdate;
-  const MyCustomForm({super.key, required this.onUpdate});
+  final String nameHintText;
+  final String amountHintText;
+  final String dateHintText;
+
+  const MyCustomForm({
+    super.key,
+    required this.onUpdate,
+    required this.nameHintText,
+    required this.amountHintText,
+    required this.dateHintText,
+  });
 
   @override
   MyCustomFormState createState() {
@@ -161,6 +187,7 @@ class MyCustomFormState extends State<MyCustomForm> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
+  final _dateController = TextEditingController();
 
   List<Map<String, String>> _submittedData = [];
 
@@ -176,6 +203,7 @@ class MyCustomFormState extends State<MyCustomForm> {
         _submittedData.add({
           'name': _nameController.text,
           'amount': _amountController.text,
+          'date': _dateController.text,
         });
       });
 
@@ -188,6 +216,7 @@ class MyCustomFormState extends State<MyCustomForm> {
       // Clear the text fields after submission
       _nameController.clear();
       _amountController.clear();
+      _dateController.clear();
     }
   }
 
@@ -235,7 +264,8 @@ class MyCustomFormState extends State<MyCustomForm> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Text('Name: ${data['name']}, Amount: ${data['amount']}'),
+                  Text(
+                      '${data['name']}: £${data['amount']} on the ${data['date']}th'),
                 ],
               ),
             ),
@@ -252,8 +282,9 @@ class MyCustomFormState extends State<MyCustomForm> {
               Expanded(
                 child: TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Name',
+                    hintText: widget.nameHintText,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -267,13 +298,45 @@ class MyCustomFormState extends State<MyCustomForm> {
               Expanded(
                 child: TextFormField(
                   controller: _amountController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Amount',
+                    hintText: widget.amountHintText,
                   ),
                   keyboardType: TextInputType.number,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Enter an amount';
+                    }
+                    final amount = double.tryParse(value);
+                    if (amount == null) {
+                      return 'Enter a valid number';
+                    }
+                    if (amount < 0) {
+                      return 'Amount cannot be negative';
+                    }
+                    if (!RegExp(r'^\d+(\.\d{0,2})?$').hasMatch(value)) {
+                      return 'Up to two decimal places allowed';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: TextFormField(
+                  controller: _dateController,
+                  decoration: InputDecoration(
+                    labelText: 'Date',
+                    hintText: widget.dateHintText,
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Enter a date';
+                    }
+                    final date = int.tryParse(value);
+                    if (date == null || date < 1 || date > 31) {
+                      return 'Enter a valid date (1-31)';
                     }
                     return null;
                   },
