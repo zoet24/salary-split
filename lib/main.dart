@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -33,11 +34,116 @@ class SalarySplitHomePage extends StatefulWidget {
   _SalarySplitHomePageState createState() => _SalarySplitHomePageState();
 }
 
+class DailyAmount {
+  final int day;
+  double amount;
+
+  DailyAmount({required this.day, this.amount = 0.0});
+
+  void addAmount(double value) {
+    amount += value;
+  }
+}
+
 class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
   final GlobalKey<MyCustomFormState> _myCustomFormKeyIn =
       GlobalKey<MyCustomFormState>();
   final GlobalKey<MyCustomFormState> _myCustomFormKeyOut =
       GlobalKey<MyCustomFormState>();
+
+  // Graph config
+  List<Map<String, String>> getMoneyInData() {
+    return _myCustomFormKeyIn.currentState?._submittedData
+            .where((entry) => entry['type'] == 'in')
+            .toList() ??
+        []; // Provide an empty list as a fallback
+  }
+
+  List<Map<String, String>> getMoneyOutData() {
+    return _myCustomFormKeyOut.currentState?._submittedData
+            .where((entry) => entry['type'] == 'out')
+            .toList() ??
+        []; // Provide an empty list as a fallback
+  }
+
+  Map<int, DailyAmount> aggregateData(
+      List<Map<String, String>> submittedData, bool isMoneyIn) {
+    Map<int, DailyAmount> aggregatedData = {};
+
+    for (var entry in submittedData) {
+      int day = int.tryParse(entry['date'] ?? '0') ?? 0;
+      double amount = double.tryParse(entry['amount'] ?? '0.0') ?? 0.0;
+
+      if (day >= 1 && day <= 30) {
+        aggregatedData.putIfAbsent(day, () => DailyAmount(day: day));
+        if (isMoneyIn) {
+          aggregatedData[day]!.addAmount(amount);
+        } else {
+          aggregatedData[day]!.addAmount(-amount);
+        }
+      }
+    }
+
+    return aggregatedData;
+  }
+
+  Map<int, double> calculateDailyNet(List<Map<String, String>> moneyInData,
+      List<Map<String, String>> moneyOutData) {
+    Map<int, double> dailyNet = {};
+
+    // Aggregate Money In
+    Map<int, DailyAmount> aggregatedMoneyIn = aggregateData(moneyInData, true);
+    aggregatedMoneyIn.forEach((day, amount) {
+      dailyNet[day] = (dailyNet[day] ?? 0) + amount.amount;
+    });
+
+    // Aggregate Money Out
+    Map<int, DailyAmount> aggregatedMoneyOut =
+        aggregateData(moneyOutData, false);
+    aggregatedMoneyOut.forEach((day, amount) {
+      dailyNet[day] = (dailyNet[day] ?? 0) - amount.amount;
+    });
+
+    return dailyNet;
+  }
+
+  List<FlSpot> calculateMonthlyBalance(
+      Map<int, double> dailyNet, double initialBalance) {
+    List<FlSpot> balanceData = [];
+    double runningBalance = initialBalance;
+
+    for (int day = 1; day <= 30; day++) {
+      runningBalance += dailyNet[day] ?? 0;
+      balanceData.add(FlSpot(day.toDouble(), runningBalance));
+    }
+
+    return balanceData;
+  }
+
+  Widget buildGraph() {
+    // Get Money In and Money Out data (update these methods according to your data structure)
+    List<Map<String, String>> moneyInData = getMoneyInData();
+    List<Map<String, String>> moneyOutData =
+        getMoneyOutData(); // Similar to getMoneyInData
+
+    // Calculate daily net change
+    Map<int, double> dailyNet = calculateDailyNet(moneyInData, moneyOutData);
+
+    // Calculate monthly balance starting from the initial balance
+    List<FlSpot> monthlyBalance = calculateMonthlyBalance(dailyNet, 1000);
+
+    return LineChart(
+      LineChartData(
+        // ... configuration for the chart ...
+        lineBarsData: [
+          LineChartBarData(
+            spots: monthlyBalance,
+            // ... additional styling for the line chart ...
+          ),
+        ],
+      ),
+    );
+  }
 
   double totalAmountIn = 0.0;
   double totalAmountOut = 0.0;
@@ -85,6 +191,10 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
                       textAlign: TextAlign.center,
                     ),
                   ),
+                  Container(
+                    height: 200, // Set an appropriate height for the graph
+                    child: buildGraph(),
+                  ),
                   Card(
                     child: Padding(
                       padding: EdgeInsets.all(16.0),
@@ -124,6 +234,7 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
                             nameHintText: "Zoe",
                             amountHintText: "650",
                             dateHintText: "27",
+                            transactionType: "in",
                           ),
                         ],
                       ),
@@ -148,6 +259,7 @@ class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
                             nameHintText: "Mortage",
                             amountHintText: "550",
                             dateHintText: "2",
+                            transactionType: "out",
                           ),
                         ],
                       ),
@@ -168,6 +280,7 @@ class MyCustomForm extends StatefulWidget {
   final String nameHintText;
   final String amountHintText;
   final String dateHintText;
+  final String transactionType;
 
   const MyCustomForm({
     super.key,
@@ -175,6 +288,7 @@ class MyCustomForm extends StatefulWidget {
     required this.nameHintText,
     required this.amountHintText,
     required this.dateHintText,
+    required this.transactionType,
   });
 
   @override
@@ -204,6 +318,7 @@ class MyCustomFormState extends State<MyCustomForm> {
           'name': _nameController.text,
           'amount': _amountController.text,
           'date': _dateController.text,
+          'type': widget.transactionType,
         });
         _submittedData.sort((a, b) {
           int dateA = int.tryParse(a['date'] ?? '0') ?? 0;
@@ -241,7 +356,7 @@ class MyCustomFormState extends State<MyCustomForm> {
     if (dateString == null || dateString.isEmpty) return '';
 
     int date = int.tryParse(dateString) ?? 0;
-    if (date < 1 || date > 31) return dateString; // Safety check
+    if (date < 1 || date > 30) return dateString; // Safety check
 
     if (date >= 11 && date <= 13) {
       return '${date}th';
@@ -367,8 +482,8 @@ class MyCustomFormState extends State<MyCustomForm> {
                       return 'Enter a date';
                     }
                     final date = int.tryParse(value);
-                    if (date == null || date < 1 || date > 31) {
-                      return 'Enter a valid date (1-31)';
+                    if (date == null || date < 1 || date > 30) {
+                      return 'Enter a valid date (1-30)';
                     }
                     return null;
                   },
