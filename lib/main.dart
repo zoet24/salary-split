@@ -205,6 +205,11 @@ class MyCustomFormState extends State<MyCustomForm> {
           'amount': _amountController.text,
           'date': _dateController.text,
         });
+        _submittedData.sort((a, b) {
+          int dateA = int.tryParse(a['date'] ?? '0') ?? 0;
+          int dateB = int.tryParse(b['date'] ?? '0') ?? 0;
+          return dateA.compareTo(dateB);
+        });
       });
 
       widget.onUpdate();
@@ -223,8 +228,34 @@ class MyCustomFormState extends State<MyCustomForm> {
   void _deleteData(int index) {
     setState(() {
       _submittedData.removeAt(index);
+      _submittedData.sort((a, b) {
+        int dateA = int.tryParse(a['date'] ?? '0') ?? 0;
+        int dateB = int.tryParse(b['date'] ?? '0') ?? 0;
+        return dateA.compareTo(dateB);
+      });
     });
     widget.onUpdate();
+  }
+
+  String formatDateWithSuffix(String? dateString) {
+    if (dateString == null || dateString.isEmpty) return '';
+
+    int date = int.tryParse(dateString) ?? 0;
+    if (date < 1 || date > 31) return dateString; // Safety check
+
+    if (date >= 11 && date <= 13) {
+      return '${date}th';
+    }
+    switch (date % 10) {
+      case 1:
+        return '${date}st';
+      case 2:
+        return '${date}nd';
+      case 3:
+        return '${date}rd';
+      default:
+        return '${date}th';
+    }
   }
 
   @override
@@ -265,7 +296,8 @@ class MyCustomFormState extends State<MyCustomForm> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Text(
-                      '${data['name']}: £${data['amount']} on the ${data['date']}th'),
+                    '${data['name']}: £${data['amount']} on the ${formatDateWithSuffix(data['date'])}',
+                  ),
                 ],
               ),
             ),
