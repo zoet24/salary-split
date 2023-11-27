@@ -26,8 +26,36 @@ class SalarySplitApp extends StatelessWidget {
 
 class SalarySplitAppState extends ChangeNotifier {}
 
-class SalarySplitHomePage extends StatelessWidget {
+class SalarySplitHomePage extends StatefulWidget {
   const SalarySplitHomePage({super.key});
+
+  @override
+  _SalarySplitHomePageState createState() => _SalarySplitHomePageState();
+}
+
+class _SalarySplitHomePageState extends State<SalarySplitHomePage> {
+  final GlobalKey<MyCustomFormState> _myCustomFormKeyIn =
+      GlobalKey<MyCustomFormState>();
+  final GlobalKey<MyCustomFormState> _myCustomFormKeyOut =
+      GlobalKey<MyCustomFormState>();
+  double totalAmountIn = 0.0;
+  double totalAmountOut = 0.0;
+
+  void _updateTotalAmountIn() {
+    if (_myCustomFormKeyIn.currentState != null) {
+      setState(() {
+        totalAmountIn = _myCustomFormKeyIn.currentState!.getTotalAmount();
+      });
+    }
+  }
+
+  void _updateTotalAmountOut() {
+    if (_myCustomFormKeyOut.currentState != null) {
+      setState(() {
+        totalAmountOut = _myCustomFormKeyOut.currentState!.getTotalAmount();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +75,7 @@ class SalarySplitHomePage extends StatelessWidget {
               width: cardWidth,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const <Widget>[
+                children: <Widget>[
                   Card(
                     child: Padding(
                       padding: EdgeInsets.all(16.0),
@@ -56,19 +84,35 @@ class SalarySplitHomePage extends StatelessWidget {
                         children: [
                           ListTile(
                             title: Text('Money In'),
-                            subtitle: Text('Enter your income details here.'),
+                            subtitle: Text(
+                                'Total: \£${_myCustomFormKeyIn.currentState?.getTotalAmount().toStringAsFixed(2) ?? '0.00'}'),
                           ),
                           Divider(),
-                          MyCustomForm(),
+                          MyCustomForm(
+                              key: _myCustomFormKeyIn,
+                              onUpdate: _updateTotalAmountIn),
                         ],
                       ),
                     ),
                   ),
                   SizedBox(height: 10),
                   Card(
-                    child: ListTile(
-                      title: Text('Money Out'),
-                      subtitle: Text('Enter your expenses details here.'),
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ListTile(
+                            title: Text('Money Out'),
+                            subtitle: Text(
+                                'Total: \£${_myCustomFormKeyOut.currentState?.getTotalAmount().toStringAsFixed(2) ?? '0.00'}'),
+                          ),
+                          Divider(),
+                          MyCustomForm(
+                              key: _myCustomFormKeyOut,
+                              onUpdate: _updateTotalAmountOut),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -82,7 +126,8 @@ class SalarySplitHomePage extends StatelessWidget {
 }
 
 class MyCustomForm extends StatefulWidget {
-  const MyCustomForm({super.key});
+  final Function onUpdate;
+  const MyCustomForm({super.key, required this.onUpdate});
 
   @override
   MyCustomFormState createState() {
@@ -97,6 +142,12 @@ class MyCustomFormState extends State<MyCustomForm> {
 
   List<Map<String, String>> _submittedData = [];
 
+  double getTotalAmount() {
+    return _submittedData.fold(0.0, (sum, item) {
+      return sum + double.tryParse(item['amount'] ?? '0.0')!;
+    });
+  }
+
   void _submitData() {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -105,6 +156,8 @@ class MyCustomFormState extends State<MyCustomForm> {
           'amount': _amountController.text,
         });
       });
+
+      widget.onUpdate();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Data Submitted')),
@@ -120,6 +173,7 @@ class MyCustomFormState extends State<MyCustomForm> {
     setState(() {
       _submittedData.removeAt(index);
     });
+    widget.onUpdate();
   }
 
   @override
@@ -203,7 +257,7 @@ class MyCustomFormState extends State<MyCustomForm> {
               ),
               ElevatedButton(
                 onPressed: _submitData,
-                child: const Text('Submit'),
+                child: const Text('Add'),
               ),
             ],
           ),
